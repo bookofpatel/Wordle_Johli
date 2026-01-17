@@ -204,11 +204,6 @@
     .modal button.primary{
       border-color: rgba(34,197,94,0.6);
     }
-    .recapGrid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
-    }
     .smallpill{
       display:inline-block;
       padding:4px 8px;
@@ -248,10 +243,9 @@
       </div>
     </div>
 
-    <div class="hint">Dictionary is ON: only valid words are accepted (includes PRAYAGRAJ).</div>
+    <div class="hint">Validation: real common English words (plus your special words). Add more words anytime in the big lists in the code.</div>
   </div>
 
-  <!-- Overlay modal for progress + final recap -->
   <div class="overlay" id="overlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Progress">
       <div id="modalContent"></div>
@@ -261,7 +255,9 @@
 
 <script>
 (() => {
-  // --- Rounds (answers + definitions) ---
+  // ---------------------------
+  // 1) Your 3-level Wordle
+  // ---------------------------
   const ROUNDS = [
     {
       answer: "JHOLI",
@@ -277,40 +273,638 @@
     }
   ];
 
-  // --- Dictionary Validation (feature #1) ---
-  // NOTE: This is an offline built-in dictionary. You can paste in a bigger list later if you want.
-  // Must include the answers; we also add many common words to make it playable.
-  const DICT = new Set([
-    // Required answers
-    "JHOLI","PRAYAGRAJ","DAN",
+  // ---------------------------
+  // 2) Built-in English validation sets
+  //    (Not NYT-full, but big enough to feel like Wordle)
+  //    You can expand these anytime.
+  // ---------------------------
 
-    // Common 3-letter words
-    "AND","THE","YOU","ARE","FOR","NOT","BUT","ALL","ANY","CAN","HAD","HER","HIM","HIS","HOW","MAN","NEW","NOW","OLD",
-    "ONE","OUR","OUT","SEE","SHE","TWO","WAY","WHO","WHY","YES","DAY","MAY","SUN","JOB","LAW","ART","CAR","GOD","GEL",
-    "SEA","SKY","RUN","FUN","EAT","TRY","USE","DUE","FAR","BAR","JAR","BAG","GAP","MAP","TAP","TOP","PAN","PEN","PIN",
-    "DON","DID","DIG","DIP","LIP","LID","LIT","SIT","SAT","SET","GET","GOT","BAT","BIT","BET","BOT","CAT","COT","CUT",
+  // Add more words by pasting into these strings (one per line).
+  // Keep them UPPERCASE letters only.
+  const WORDS_3 = `
+AND
+THE
+YOU
+ARE
+FOR
+NOT
+BUT
+ALL
+ANY
+CAN
+HAD
+HER
+HIM
+HIS
+HOW
+MAN
+MEN
+NEW
+NOW
+OLD
+ONE
+OUR
+OUT
+SEE
+SHE
+TWO
+WAY
+WHO
+WHY
+YES
+DAY
+MAY
+SUN
+SEA
+SKY
+RUN
+FUN
+EAT
+TRY
+USE
+DUE
+FAR
+BAR
+JAR
+BAG
+MAP
+TAP
+TOP
+PAN
+PEN
+PIN
+DON
+DID
+LIT
+SIT
+SET
+GET
+GOT
+BAT
+BIT
+BET
+BOT
+CAT
+COT
+CUT
+PUT
+PAT
+PIT
+POT
+RAT
+RAN
+RED
+RAW
+ROW
+LOW
+LAW
+LAB
+JOB
+JOY
+WAR
+WIN
+WON
+GOD
+HOP
+HIP
+HIT
+HUT
+HAT
+HOT
+HEN
+EGG
+ICE
+OIL
+AIR
+INK
+ARM
+LEG
+EYE
+EAR
+DAN
+`;
 
-    // Common 5-letter words
-    "ABOUT","OTHER","THEIR","THERE","WHICH","APPLE","STONE","PLANE","CRANE","SMILE","BRING","SHARE","SOUND","LIGHT","WATER",
-    "HOUSE","MONEY","TRAIN","GRASS","FLOAT","CLOUD","HEART","NIGHT","WORLD","SWEET","SHEET","CHEAT","CLEAN","BLEND","BRAVE",
-    "FRUIT","MOUTH","EARTH","RIVER","OCEAN","PLANT","GHOST","FAITH","PEACE","TRUST","POWER","UNITY","VOICE","ALONE","BEGIN",
-    "FINAL","HAPPY","SADLY","NOBLE","ROYAL","BREAD","SUGAR","SPICE","TIGER","ZEBRA","EAGLE","SNAKE","MOUSE","HORSE","SHEEP",
-    "CYCLE","DRIVE","PHONE","STUDY","LEARN","WRITE","READS","WORDS","GUESS","TRIES","GREEN","YELLOW","BLACK",
+  // A bigger 5-letter “common” set (hundreds). Includes SAUCE.
+  const WORDS_5 = `
+ABOUT
+ABOVE
+ACTOR
+ACUTE
+ADMIT
+ADOPT
+ADULT
+AFTER
+AGAIN
+AGENT
+AGREE
+AHEAD
+ALARM
+ALBUM
+ALERT
+ALIKE
+ALIVE
+ALLOW
+ALONE
+ALONG
+ALTER
+AMONG
+ANGER
+ANGLE
+ANGRY
+APART
+APPLE
+APPLY
+ARENA
+ARGUE
+ARISE
+ARRAY
+ASIDE
+ASSET
+AUDIO
+AVOID
+AWARD
+AWARE
+BADGE
+BAKER
+BASIC
+BASIS
+BEACH
+BEGIN
+BEING
+BELLY
+BENCH
+BIBLE
+BIRTH
+BLACK
+BLAME
+BLIND
+BLOCK
+BLOOD
+BOARD
+BOOST
+BOOTH
+BOUND
+BRAIN
+BRAND
+BRAVE
+BREAD
+BREAK
+BRICK
+BRIEF
+BRING
+BROAD
+BROWN
+BUILD
+BUYER
+CABLE
+CALIF
+CARRY
+CATCH
+CAUSE
+CHAIN
+CHAIR
+CHART
+CHASE
+CHEAP
+CHECK
+CHEST
+CHIEF
+CHILD
+CHINA
+CHOIR
+CHOOSE
+CIVIL
+CLAIM
+CLASS
+CLEAN
+CLEAR
+CLERK
+CLICK
+CLOCK
+CLOSE
+COACH
+COAST
+COULD
+COUNT
+COURT
+COVER
+CRACK
+CRAFT
+CRANE
+CRASH
+CRAZY
+CREAM
+CRIME
+CROSS
+CROWD
+CROWN
+CYCLE
+DAILY
+DANCE
+DEALT
+DEATH
+DEBUT
+DELAY
+DEPTH
+DOING
+DOUBT
+DOZEN
+DRAFT
+DRAMA
+DRAWN
+DREAM
+DRESS
+DRINK
+DRIVE
+DROVE
+EARLY
+EARTH
+EIGHT
+ELDER
+ELECT
+EMPTY
+ENJOY
+ENTER
+ENTRY
+EQUAL
+ERROR
+EVENT
+EVERY
+EXACT
+EXIST
+EXTRA
+FAITH
+FALSE
+FANCY
+FAULT
+FIBER
+FIELD
+FIFTH
+FIFTY
+FIGHT
+FINAL
+FIRST
+FIXED
+FLASH
+FLEET
+FLOOR
+FLUID
+FOCUS
+FORCE
+FORTH
+FORTY
+FOUND
+FRAME
+FRANK
+FRAUD
+FRESH
+FRONT
+FRUIT
+FULLY
+FUNNY
+GIANT
+GIVEN
+GLASS
+GLOBE
+GOING
+GRACE
+GRADE
+GRAIN
+GRAND
+GRANT
+GRASS
+GREAT
+GREEN
+GROUP
+GUARD
+GUESS
+GUIDE
+HAPPY
+HARDY
+HEART
+HEAVY
+HONEY
+HORSE
+HOTEL
+HOUSE
+HUMAN
+IDEAL
+IMAGE
+INDEX
+INNER
+INPUT
+ISSUE
+JHOLI
+JOINT
+JUDGE
+KNOWN
+LABEL
+LARGE
+LASER
+LATER
+LAUGH
+LAYER
+LEARN
+LEAST
+LEAVE
+LEGAL
+LEVEL
+LIGHT
+LIMIT
+LOCAL
+LOGIC
+LOOSE
+LOWER
+LUCKY
+LUNCH
+MAJOR
+MAKER
+MARCH
+MATCH
+MAYBE
+MEANT
+MEDIA
+METAL
+MIGHT
+MINOR
+MINUTE
+MIXED
+MODEL
+MONEY
+MONTH
+MORAL
+MOTOR
+MOUTH
+MOVIE
+MUSIC
+NEEDS
+NEVER
+NIGHT
+NOISE
+NORTH
+NOVEL
+NURSE
+OCCUR
+OCEAN
+OFFER
+OFTEN
+ORDER
+OTHER
+OWNER
+PAINT
+PANEL
+PAPER
+PARTY
+PASTA
+PEACE
+PENNY
+PHONE
+PHOTO
+PIECE
+PILOT
+PITCH
+PLACE
+PLAIN
+PLANE
+PLANT
+PLATE
+POINT
+POWER
+PRESS
+PRICE
+PRIDE
+PRIME
+PRINT
+PRIOR
+PROOF
+PROUD
+QUEEN
+QUICK
+QUIET
+QUITE
+RADIO
+RAISE
+RANGE
+RAPID
+RATIO
+REACH
+REACT
+READY
+REFER
+RIGHT
+RIVER
+ROBOT
+ROUND
+ROUTE
+ROYAL
+RUGBY
+RULER
+RURAL
+SAUCE
+SCALE
+SCENE
+SCOPE
+SCORE
+SCREW
+SENSE
+SERVE
+SEVEN
+SHALL
+SHAPE
+SHARE
+SHEEP
+SHEET
+SHIFT
+SHINE
+SHIRT
+SHOCK
+SHOOT
+SHORT
+SHOWN
+SIGHT
+SINCE
+SIXTH
+SKILL
+SLEEP
+SMALL
+SMART
+SMILE
+SMOKE
+SNAKE
+SOLID
+SOLVE
+SOUND
+SOUTH
+SPACE
+SPARE
+SPEAK
+SPEED
+SPICE
+SPEND
+SPENT
+SPLIT
+SPOKE
+SPORT
+STAFF
+STAGE
+STAND
+START
+STATE
+STEEL
+STICK
+STILL
+STOCK
+STONE
+STORE
+STORM
+STORY
+STRIP
+STUDY
+STUFF
+STYLE
+SUGAR
+SUITE
+SUPER
+SWEET
+TABLE
+TAKEN
+TEACH
+TEARS
+THEIR
+THEME
+THERE
+THESE
+THICK
+THING
+THINK
+THIRD
+THOSE
+THREE
+THROW
+TIGER
+TITLE
+TODAY
+TOPIC
+TOTAL
+TOUCH
+TOUGH
+TOWER
+TRACK
+TRADE
+TRAIN
+TREAT
+TREND
+TRIAL
+TRUST
+TRUTH
+TWICE
+UNDER
+UNION
+UNITY
+UNTIL
+UPPER
+URBAN
+USAGE
+USUAL
+VALUE
+VIDEO
+VIRUS
+VISIT
+VOICE
+VOTER
+WASTE
+WATCH
+WATER
+WHEEL
+WHERE
+WHICH
+WHILE
+WHITE
+WHOLE
+WHOSE
+WOMAN
+WOMEN
+WORLD
+WORRY
+WORTH
+WOULD
+WRITE
+WRONG
+YIELD
+YOUNG
+`;
 
-    // Extra 9-letter words to support PRAYAGRAJ-length play
-    "EDUCATION","IMPORTANT","HAPPINESS","DIFFERENT","SOMETHING","EVERYBODY","KNOWLEDGE","ATTENTION","CELEBRATE",
-    "MOUNTAINS","CROCODILE","PINEAPPLE","CHOCOLATE","NOTEBOOKS","TELEPHONE","MICROSOFT","ADVENTURE",
-    // (plus PRAYAGRAJ already included)
-  ]);
+  // 9-letter “common” set (dozens+). Includes PRAYAGRAJ always.
+  const WORDS_9 = `
+ADVENTURE
+AFTERNOON
+ATTENTION
+AVAILABLE
+CELEBRATE
+CHOCOLATE
+COMMUNITY
+COMPUTERS
+CREATIVITY
+DIFFERENT
+EDUCATION
+EVERYBODY
+FANTASTIC
+FORMATION
+FREQUENCY
+GOVERNMENT
+HAPPINESS
+IMPORTANT
+LANGUAGES
+LITERATURE
+MOUNTAINS
+NOTEBOOKS
+OPERATIONS
+ORGANIZED
+PINEAPPLE
+PRACTICAL
+PRAYAGRAJ
+PRESIDENT
+RELIGIOUS
+SATELLITE
+SOMETHING
+SPIRITUAL
+STRATEGY
+TECHNOLOGY
+TRADITION
+TRANSPORT
+WATERFALL
+WONDERFUL
+`;
 
-  function isValidWord(w){
-    return DICT.has(w);
+  function makeSet(multiline) {
+    return new Set(
+      multiline
+        .split(/\r?\n/)
+        .map(s => s.trim().toUpperCase())
+        .filter(s => s && /^[A-Z]+$/.test(s))
+    );
   }
 
-  // --- Settings ---
-  const MAX_ROWS_DEFAULT = 6;
+  const SET3 = makeSet(WORDS_3);
+  const SET5 = makeSet(WORDS_5);
+  const SET9 = makeSet(WORDS_9);
 
-  // --- UI ---
+  // Always allow the 3 answers regardless of list contents
+  SET5.add("JHOLI");
+  SET9.add("PRAYAGRAJ");
+  SET3.add("DAN");
+
+  function isValidWord(w) {
+    const L = w.length;
+    if (L === 3) return SET3.has(w);
+    if (L === 5) return SET5.has(w);
+    if (L === 9) return SET9.has(w);
+    return false;
+  }
+
+  // ---------------------------
+  // 3) Game UI + logic
+  // ---------------------------
   const gridEl = document.getElementById("grid");
   const msgEl = document.getElementById("message");
   const copyBtn = document.getElementById("copyBtn");
@@ -319,17 +913,17 @@
   const roundPill = document.getElementById("roundPill");
   const subtitle = document.getElementById("subtitle");
 
-  // Modal overlay
   const overlay = document.getElementById("overlay");
   const modalContent = document.getElementById("modalContent");
   const modalButtons = document.getElementById("modalButtons");
 
-  // Keyboard layout
   const layout = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
   const keyEls = new Map();
   const r1 = document.getElementById("row1");
   const r2 = document.getElementById("row2");
   const r3 = document.getElementById("row3");
+
+  const MAX_ROWS = 6;
 
   function clearEl(el){ while(el.firstChild) el.removeChild(el.firstChild); }
 
@@ -345,34 +939,24 @@
   function buildKeyboard(){
     clearEl(r1); clearEl(r2); clearEl(r3);
     keyEls.clear();
-
     for (const ch of layout[0]) addKey(r1, ch);
     for (const ch of layout[1]) addKey(r2, ch);
-
     addKey(r3, "Enter", true);
     for (const ch of layout[2]) addKey(r3, ch);
     addKey(r3, "⌫", true);
   }
 
-  // --- Game state ---
   let roundIndex = 0;
   let ANSWER = "";
   let WORD_LEN = 0;
-  let MAX_ROWS = MAX_ROWS_DEFAULT;
 
   let tiles = [];
   let row = 0, col = 0;
   let guesses = [];
   let done = false;
 
-  // Store per-round share blocks (feature #3 recap)
   const roundResults = ROUNDS.map(() => ({
-    finished:false,
-    won:false,
-    attempts:0,
-    emoji:"",
-    answer:"",
-    definition:""
+    finished:false, won:false, attempts:0, emoji:"", answer:"", definition:""
   }));
 
   function setMessage(html) { msgEl.innerHTML = html; }
@@ -383,6 +967,7 @@
     void t.offsetWidth;
     t.classList.add("pop");
   }
+
   function shakeRow(r){
     const rowEl = gridEl.children[r];
     rowEl.classList.remove("shake");
@@ -393,12 +978,10 @@
   function buildGrid() {
     clearEl(gridEl);
     tiles = [];
-
     for (let r = 0; r < MAX_ROWS; r++) {
       const rowEl = document.createElement("div");
       rowEl.className = "row";
       rowEl.style.gridTemplateColumns = `repeat(${WORD_LEN}, 1fr)`;
-
       const rowTiles = [];
       for (let c = 0; c < WORD_LEN; c++) {
         const t = document.createElement("div");
@@ -415,18 +998,15 @@
     roundIndex = i;
     ANSWER = ROUNDS[i].answer.toUpperCase().replace(/[^A-Z]/g, "");
     WORD_LEN = ANSWER.length;
-    MAX_ROWS = MAX_ROWS_DEFAULT;
 
     row = 0; col = 0; done = false;
     guesses = Array.from({length: MAX_ROWS}, () => Array(WORD_LEN).fill(""));
 
     roundPill.textContent = `Round ${i+1} / ${ROUNDS.length}`;
     subtitle.textContent = `${WORD_LEN} letters · ${MAX_ROWS} tries`;
-
     buildGrid();
     buildKeyboard();
     render();
-
     setMessage(`Type a <strong>${WORD_LEN}-letter</strong> guess, then press <strong>Enter</strong>.`);
   }
 
@@ -474,22 +1054,19 @@
     }
   }
 
-  // Build emoji block for a round
   function buildEmojiForCurrentRound() {
     let out = [];
     const playedRows = Math.min(row + 1, MAX_ROWS);
     for (let r=0; r<playedRows; r++){
       const g = guesses[r].join("");
       if (g.length !== WORD_LEN) break;
-      const score = scoreGuess(g, ANSWER);
-      const line = score.map(s => s==="correct"?"🟩":s==="present"?"🟨":"⬛").join("");
-      out.push(line);
+      const s = scoreGuess(g, ANSWER);
+      out.push(s.map(x => x==="correct"?"🟩":x==="present"?"🟨":"⬛").join(""));
       if (g === ANSWER) break;
     }
     return out.join("\n");
   }
 
-  // --- Feature #2: Progress screen between rounds ---
   function openModal(html, buttons) {
     modalContent.innerHTML = html;
     clearEl(modalButtons);
@@ -512,7 +1089,6 @@
     const def = ROUNDS[roundIndex].definition;
     const emoji = buildEmojiForCurrentRound();
 
-    // Save round result for recap
     roundResults[roundIndex] = {
       finished:true,
       won,
@@ -528,27 +1104,26 @@
     const html = `
       <h2>${title} <span class="smallpill">Round ${roundIndex+1} / ${ROUNDS.length}</span></h2>
       <div class="meta">${attemptsLabel}</div>
-      <div class="card">
-        <div class="definition">${def}</div>
-      </div>
+      <div class="card"><div class="definition">${def}</div></div>
       <div class="card">
         <div class="meta" style="margin-bottom:8px;">Your grid</div>
         <div class="emoji">${emoji || ""}</div>
       </div>
     `;
 
-    const buttons = [];
-    buttons.push({
-      label: "Copy Round",
-      onClick: async () => {
-        try {
-          await navigator.clipboard.writeText(`Wordle Round ${roundIndex+1}/${ROUNDS.length} (${ANSWER})\n${emoji}`);
-          setMessage("Copied round result.");
-        } catch {
-          setMessage("Couldn’t copy.");
+    const buttons = [
+      {
+        label: "Copy Round",
+        onClick: async () => {
+          try {
+            await navigator.clipboard.writeText(`Wordle Round ${roundIndex+1}/${ROUNDS.length} (${ANSWER})\n${emoji}`);
+            setMessage("Copied round result.");
+          } catch {
+            setMessage("Couldn’t copy.");
+          }
         }
       }
-    });
+    ];
 
     if (roundIndex < ROUNDS.length - 1) {
       buttons.push({
@@ -573,17 +1148,35 @@
     openModal(html, buttons);
   }
 
-  // --- Feature #3: Final recap page ---
-  function showFinalRecap() {
-    // ensure last round saved if someone hits recap without it
-    // (normally saved via showProgressModal)
-    const allDone = roundResults.every(r => r.finished);
+  function buildAllShareText() {
+    const parts = [];
+    parts.push(`Wordle Sequence (${ROUNDS.length} rounds)`);
+    for (let i=0;i<ROUNDS.length;i++){
+      const r = roundResults[i];
+      const ans = r.answer || ROUNDS[i].answer.toUpperCase();
+      const emoji = (r.emoji || "").trim();
+      const status = r.finished ? (r.won ? `${r.attempts}/6` : `X/6`) : "—";
+      parts.push(`\nRound ${i+1}: ${ans}  ${status}`);
+      if (emoji) parts.push(emoji);
+    }
+    parts.push("\n");
+    return parts.join("\n");
+  }
 
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;");
+  }
+
+  function showFinalRecap() {
     const blocks = roundResults.map((r, i) => {
-      const status = r.won ? `Solved in ${r.attempts}/6` : `Not solved (Answer: ${r.answer})`;
+      const ans = r.answer || ROUNDS[i].answer.toUpperCase();
+      const status = r.finished ? (r.won ? `Solved in ${r.attempts}/6` : `Not solved (Answer: ${ans})`) : "Not played";
       return `
         <div class="card">
-          <div class="meta"><strong>Round ${i+1}:</strong> ${r.answer || ROUNDS[i].answer.toUpperCase()} · ${status}</div>
+          <div class="meta"><strong>Round ${i+1}:</strong> ${ans} · ${status}</div>
           <div class="definition">${r.definition || ROUNDS[i].definition}</div>
           <div style="height:10px;"></div>
           <div class="emoji">${(r.emoji || "").trim()}</div>
@@ -592,13 +1185,10 @@
     }).join("");
 
     const fullShare = buildAllShareText();
-
     const html = `
       <h2>🎉 Recap <span class="smallpill">All 3 rounds</span></h2>
-      <div class="meta">${allDone ? "Here’s what you learned + your results." : "Some rounds weren’t completed, but here’s the recap so far."}</div>
-      <div class="recapGrid">
-        ${blocks}
-      </div>
+      <div class="meta">Here are all words + definitions + your results.</div>
+      ${blocks}
       <div class="card">
         <div class="meta" style="margin-bottom:8px;">Copy-all text</div>
         <div class="emoji">${escapeHtml(fullShare)}</div>
@@ -622,7 +1212,6 @@
         label: "Play Again",
         onClick: () => {
           closeModal();
-          // reset round results
           for (let i=0;i<roundResults.length;i++){
             roundResults[i] = {finished:false, won:false, attempts:0, emoji:"", answer:"", definition:""};
           }
@@ -632,14 +1221,6 @@
     ]);
   }
 
-  function escapeHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;");
-  }
-
-  // --- Core gameplay ---
   function lockInGuess() {
     const guess = guesses[row].join("");
     if (guess.length !== WORD_LEN) {
@@ -647,8 +1228,6 @@
       shakeRow(row);
       return;
     }
-
-    // Dictionary validation ON
     if (!isValidWord(guess)) {
       setMessage("Not in word list.");
       shakeRow(row);
@@ -704,47 +1283,21 @@
   }
 
   window.addEventListener("keydown", (e) => {
-    // allow ESC to close modal
     if (e.key === "Escape" && overlay.style.display === "flex") {
       closeModal();
       return;
     }
-    if (overlay.style.display === "flex") return; // block typing when modal open
+    if (overlay.style.display === "flex") return;
 
     if (done) return;
-    const key = e.key;
-    if (key === "Enter") return handleKey("Enter");
-    if (key === "Backspace") return handleKey("Backspace");
-    const up = key.toUpperCase();
+    if (e.key === "Enter") return handleKey("Enter");
+    if (e.key === "Backspace") return handleKey("Backspace");
+    const up = e.key.toUpperCase();
     if (/^[A-Z]$/.test(up)) handleKey(up);
   });
 
-  // --- Share buttons ---
-  function buildShareTextForRound(i) {
-    const r = roundResults[i];
-    const ans = r.answer || ROUNDS[i].answer.toUpperCase();
-    const emoji = r.emoji || "(play to generate)";
-    return `Wordle Round ${i+1}/${ROUNDS.length} (${ans})\n${emoji}`;
-  }
-
-  function buildAllShareText() {
-    const parts = [];
-    parts.push(`Wordle Sequence (${ROUNDS.length} rounds)`);
-    for (let i=0;i<ROUNDS.length;i++){
-      const r = roundResults[i];
-      const ans = r.answer || ROUNDS[i].answer.toUpperCase();
-      const emoji = (r.emoji || "").trim();
-      const status = r.finished ? (r.won ? `${r.attempts}/6` : `X/6`) : "—";
-      parts.push(`\nRound ${i+1}: ${ans}  ${status}`);
-      if (emoji) parts.push(emoji);
-    }
-    parts.push("\n");
-    return parts.join("\n");
-  }
-
   copyBtn.addEventListener("click", async () => {
     try {
-      // If round not finished, still copy current partial emoji
       const emoji = done ? buildEmojiForCurrentRound() : "(finish the round to get the grid)";
       const text = `Wordle Round ${roundIndex+1}/${ROUNDS.length} (${ANSWER})\n${emoji}`;
       await navigator.clipboard.writeText(text);
@@ -763,9 +1316,7 @@
     }
   });
 
-  resetBtn.addEventListener("click", () => {
-    initStateForRound(roundIndex);
-  });
+  resetBtn.addEventListener("click", () => initStateForRound(roundIndex));
 
   // Start
   buildKeyboard();
