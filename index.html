@@ -1,3 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Uttaryan Wordle — JHOLI → PRAYAGRAJ → DAN</title>
+  <style>
+    :root{
+      --sky1:#60A5FA;
+      --sky2:#93C5FD;
+      --sky3:#FDE68A;
+      --glass: rgba(255,255,255,0.16);
+      --glass2: rgba(255,255,255,0.10);
+      --border: rgba(255,255,255,0.22);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.72);
+      --tile: rgba(15,23,42,0.55);
+      --tileBorder: rgba(255,255,255,0.18);
+      --hint: rgba(56,189,248,0.95);
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      overflow-x:hidden;
+      background:
+        radial-gradient(1100px 700px at 30% 0%, rgba(253,230,138,0.85) 0%, rgba(96,165,250,0.15) 55%, rgba(2,6,23,0.0) 70%),
+        linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 48%, var(--sky3) 100%);
+    }
+
+    /* Floating kite layer */
+    .kitefield{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+      z-index:0;
+    }
+    .kite{
+      position:absolute;
+      width:28px;
+      height:28px;
+      transform: rotate(45deg);
+      border-radius:6px;
+      opacity:0.55;
+      filter: drop-shadow(0 8px 18px rgba(0,0,0,0.20));
+      animation: drift var(--dur) linear infinite;
+    }
+    .kite::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:6px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.08));
+      border:1px solid rgba(255,255,255,0.35);
+    }
+    .kite::after{
+      content:"";
+      position:absolute;
+      width:1px;
+      height:90px;
+      left:50%;
+      top:100%;
+      transform: translateX(-50%) rotate(-45deg);
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.0),
+        rgba(255,255,255,0.28),
+        rgba(255,255,255,0.0)
+      );
+      opacity:0.65;
+    }
+    @keyframes drift{
+      0%   { transform: translate(-20vw, 110vh) rotate(45deg); }
+      100% { transform: translate(120vw, -25vh) rotate(45deg); }
+    }
+    .c1{ background: rgba(34,197,94,0.35); }
+    .c2{ background: rgba(250,204,21,0.35); }
+    .c3{ background: rgba(244,114,182,0.35); }
+    .c4{ background: rgba(251,146,60,0.35); }
+    .c5{ background: rgba(56,189,248,0.35); }
+
+    /* Layout */
+    .wrap{
+      position:relative;
+      z-index:1;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:22px;
+    }
+    .card{
+      width:min(900px, 100%);
+      background: linear-gradient(180deg, var(--glass) 0%, var(--glass2) 100%);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:18px 18px 16px;
+      box-shadow: 0 22px 90px rgba(0,0,0,0.35);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .topline{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      padding:2px 2px 12px;
+      border-bottom:1px solid rgba(255,255,255,0.16);
+      margin-bottom:10px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.22);
+      background: rgba(2,6,23,0.18);
+      color: var(--text);
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:0.2px;
+      user-select:none;
+    }
+    .small{
+      color: var(--muted);
+      font-size:12px;
+      line-height:1.2;
+      user-select:none;
+    }
+
+    /* Grid */
+    #grid{ margin-top: 6px; }
+    .row{
+      display:grid;
+      gap:10px;
+      margin:10px 0;
+    }
+    .tile{
+      aspect-ratio: 1 / 1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: var(--tile);
+      border:1px solid var(--tileBorder);
+      border-radius:14px;
+      font-size:28px;
+      font-weight:900;
+      text-transform:uppercase;
+      user-select:none;
+      transition: transform .08s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .tile.pop{ transform: scale(1.04); }
+    .tile.correct{ background: rgba(34,197,94,0.85); border-color: rgba(34,197,94,0.95); color:white; }
+    .tile.present{ background: rgba(250,204,21,0.78); border-color: rgba(250,204,21,0.95); color: rgba(2,6,23,0.95); }
+    .tile.absent{  background: rgba(30,41,59,0.82); border-color: rgba(148,163,184,0.35); color: rgba(255,255,255,0.90); }
+    .tile.hinted{
+      border-color: var(--hint);
+      box-shadow: 0 0 0 2px rgba(56,189,248,0.18) inset, 0 10px 30px rgba(56,189,248,0.08);
+    }
+
+    .status{
+      margin-top:12px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      padding:12px 12px;
+      border-radius:16px;
+      background: rgba(2,6,23,0.20);
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+    .msg{
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      max-width: 560px;
+    }
+    .msg strong{ color: var(--text); }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; }
+    .actions button{
+      border-radius:14px;
+      padding:10px 12px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(2,6,23,0.18);
+      color: var(--text);
+      font-weight:900;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .actions button:active{ transform: scale(0.99); }
+    .actions button.hintBtn{
+      border-color: rgba(56,189,248,0.55);
+      background: linear-gradient(135deg, rgba(56,189,248,0.18), rgba(244,114,182,0.10));
+    }
+    .actions button:disabled{
+      opacity:0.55;
+      cursor:not-allowed;
+    }
+
+    /* On-screen keyboard */
+    .keyboard{
+      margin-top:14px;
+      display:grid;
+      gap:8px;
+    }
+    .kb-row{
+      display:flex;
+      justify-content:center;
+      gap:6px;
+      flex-wrap:nowrap;
+    }
+    .key{
+      padding:12px 10px;
+      min-width:34px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.25);
+      background: rgba(2,6,23,0.22);
+      color: var(--text);
+      font-weight:900;
+      cursor:pointer;
+      user-select:none;
+    }
+    .key.wide{
+      min-width:72px;
+      font-size:12px;
+    }
+    .key:active{ transform: scale(0.97); }
+    .key:disabled{ opacity:0.55; cursor:not-allowed; }
+
+    .shake{ animation: shake .25s linear; }
+    @keyframes shake{
+      0%,100%{ transform: translateX(0); }
+      25%{ transform: translateX(-6px); }
+      75%{ transform: translateX(6px); }
+    }
+
+    /* Modal */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background: rgba(2,6,23,0.62);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      z-index:50;
+    }
+    .modal{
+      width:min(760px, 100%);
+      background: rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.22);
+      border-radius:20px;
+      padding:16px;
+      box-shadow: 0 18px 70px rgba(0,0,0,0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .modal h2{
+      margin:0 0 8px 0;
+      font-size:16px;
+      letter-spacing:0.2px;
+      color: var(--text);
+    }
+    .modal .meta{
+      color: var(--muted);
+      font-size:12px;
+      margin-bottom:10px;
+    }
+    .cardbox{
+      border:1px solid rgba(255,255,255,0.18);
+      background: rgba(2,6,23,0.16);
+      border-radius:14px;
+      padding:12px;
+      margin:10px 0;
+    }
+    .definition{
+      font-size:13px;
+      color: var(--text);
+      line-height:1.4;
+    }
+    .emoji{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      white-space: pre;
+      font-size:14px;
+      line-height:1.25;
+      color: var(--text);
+    }
+    .btnrow{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .btnrow button{
+      border-radius:14px;
+      padding:10px 12px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(2,6,23,0.18);
+      color: var(--text);
+      font-weight:900;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .btnrow button.primary{
+      border-color: rgba(34,197,94,0.65);
+      background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(250,204,21,0.10));
+    }
+
+    /* Hidden input: enables mobile keyboard without taking space */
+    #ghostInput{
+      position:absolute;
+      left:-9999px;
+      top:-9999px;
+      width:1px;
+      height:1px;
+      opacity:0;
+    }
+  </style>
+</head>
+<body>
+  <div class="kitefield" aria-hidden="true">
+    <div class="kite c1" style="--dur:46s; left:-10vw; top:70vh; width:22px; height:22px; opacity:.42;"></div>
+    <div class="kite c2" style="--dur:52s; left:-18vw; top:90vh; width:26px; height:26px; opacity:.48;"></div>
+    <div class="kite c3" style="--dur:58s; left:-26vw; top:110vh; width:18px; height:18px; opacity:.40;"></div>
+    <div class="kite c4" style="--dur:64s; left:-34vw; top:100vh; width:28px; height:28px; opacity:.45;"></div>
+    <div class="kite c5" style="--dur:72s; left:-42vw; top:120vh; width:20px; height:20px; opacity:.38;"></div>
+
+    <div class="kite c2" style="--dur:60s; left:-14vw; top:105vh; width:16px; height:16px; opacity:.32;"></div>
+    <div class="kite c4" style="--dur:78s; left:-22vw; top:130vh; width:24px; height:24px; opacity:.34;"></div>
+    <div class="kite c1" style="--dur:86s; left:-30vw; top:145vh; width:19px; height:19px; opacity:.30;"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="card" id="gameCard" role="application" aria-label="Uttaryan Wordle">
+      <div class="topline">
+        <div class="pill" id="roundPill">Round 1 / 3</div>
+        <div class="small" id="subtitle">Tap card to type • or use keyboard below</div>
+      </div>
+
+      <main id="grid" aria-label="Game grid"></main>
+
+      <div class="status">
+        <div class="msg" id="message">Type your guess, then press <strong>Enter</strong>.</div>
+        <div class="actions">
+          <button class="hintBtn" id="hintBtn" title="Reveal a correct-position letter (locked)">HINT</button>
+          <button id="copyBtn" title="Copy share result for this round">COPY ROUND</button>
+          <button id="copyAllBtn" title="Copy all rounds (when finished)">COPY ALL</button>
+          <button id="resetBtn" title="Restart current word">RESET</button>
+        </div>
+      </div>
+
+      <!-- On-screen keyboard -->
+      <div class="keyboard" aria-label="Keyboard">
+        <div class="kb-row" id="kb1"></div>
+        <div class="kb-row" id="kb2"></div>
+        <div class="kb-row" id="kb3"></div>
+      </div>
+
+      <input id="ghostInput" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Progress">
+      <div id="modalContent"></div>
+      <div class="btnrow" id="modalButtons"></div>
+    </div>
+  </div>
+
 <script>
 (() => {
   // Rounds
@@ -484,6 +866,7 @@
 
   // Buttons
   hintBtn.addEventListener("click", () => { focusInput(); revealHint(); });
+
   copyBtn.addEventListener("click", async () => {
     try {
       const emoji = done ? buildEmojiForCurrentRound() : "(finish the round to get the grid)";
@@ -493,6 +876,7 @@
       setMessage("Couldn’t copy.");
     }
   });
+
   copyAllBtn.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(buildAllShareText());
@@ -501,9 +885,12 @@
       setMessage("Couldn’t copy.");
     }
   });
+
   resetBtn.addEventListener("click", () => initStateForRound(roundIndex));
 
   // Start
   initStateForRound(0);
 })();
 </script>
+</body>
+</html>
