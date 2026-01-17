@@ -32,7 +32,7 @@
         linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 48%, var(--sky3) 100%);
     }
 
-    /* Floating kite layer */
+    /* --- Floating kite layer --- */
     .kitefield{
       position:fixed;
       inset:0;
@@ -40,6 +40,7 @@
       overflow:hidden;
       z-index:0;
     }
+
     .kite{
       position:absolute;
       width:28px;
@@ -50,6 +51,8 @@
       filter: drop-shadow(0 8px 18px rgba(0,0,0,0.20));
       animation: drift var(--dur) linear infinite;
     }
+
+    /* kite body */
     .kite::before{
       content:"";
       position:absolute;
@@ -58,6 +61,8 @@
       background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.08));
       border:1px solid rgba(255,255,255,0.35);
     }
+
+    /* tail / string */
     .kite::after{
       content:"";
       position:absolute;
@@ -74,17 +79,20 @@
       );
       opacity:0.65;
     }
+
     @keyframes drift{
       0%   { transform: translate(-20vw, 110vh) rotate(45deg); }
       100% { transform: translate(120vw, -25vh) rotate(45deg); }
     }
+
+    /* color variations */
     .c1{ background: rgba(34,197,94,0.35); }
     .c2{ background: rgba(250,204,21,0.35); }
     .c3{ background: rgba(244,114,182,0.35); }
     .c4{ background: rgba(251,146,60,0.35); }
     .c5{ background: rgba(56,189,248,0.35); }
 
-    /* Layout */
+    /* --- Layout --- */
     .wrap{
       position:relative;
       z-index:1;
@@ -94,8 +102,9 @@
       justify-content:center;
       padding:22px;
     }
+
     .card{
-      width:min(900px, 100%);
+      width:min(860px, 100%);
       background: linear-gradient(180deg, var(--glass) 0%, var(--glass2) 100%);
       border:1px solid var(--border);
       border-radius:22px;
@@ -115,6 +124,7 @@
       border-bottom:1px solid rgba(255,255,255,0.16);
       margin-bottom:10px;
     }
+
     .pill{
       display:inline-flex;
       align-items:center;
@@ -124,11 +134,12 @@
       border:1px solid rgba(255,255,255,0.22);
       background: rgba(2,6,23,0.18);
       color: var(--text);
-      font-weight:900;
+      font-weight:800;
       font-size:12px;
       letter-spacing:0.2px;
       user-select:none;
     }
+
     .small{
       color: var(--muted);
       font-size:12px;
@@ -136,7 +147,7 @@
       user-select:none;
     }
 
-    /* Grid */
+    /* grid */
     #grid{ margin-top: 6px; }
     .row{
       display:grid;
@@ -158,9 +169,13 @@
       transition: transform .08s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
     }
     .tile.pop{ transform: scale(1.04); }
+
+    /* Wordle-like colors (bright but not harsh) */
     .tile.correct{ background: rgba(34,197,94,0.85); border-color: rgba(34,197,94,0.95); color:white; }
     .tile.present{ background: rgba(250,204,21,0.78); border-color: rgba(250,204,21,0.95); color: rgba(2,6,23,0.95); }
     .tile.absent{  background: rgba(30,41,59,0.82); border-color: rgba(148,163,184,0.35); color: rgba(255,255,255,0.90); }
+
+    /* hinted tiles: subtle blue glow */
     .tile.hinted{
       border-color: var(--hint);
       box-shadow: 0 0 0 2px rgba(56,189,248,0.18) inset, 0 10px 30px rgba(56,189,248,0.08);
@@ -178,6 +193,7 @@
       background: rgba(2,6,23,0.20);
       border: 1px solid rgba(255,255,255,0.16);
     }
+
     .msg{
       color: var(--muted);
       font-size:13px;
@@ -185,6 +201,7 @@
       max-width: 560px;
     }
     .msg strong{ color: var(--text); }
+
     .actions{ display:flex; gap:8px; flex-wrap:wrap; }
     .actions button{
       border-radius:14px;
@@ -206,36 +223,6 @@
       opacity:0.55;
       cursor:not-allowed;
     }
-
-    /* On-screen keyboard */
-    .keyboard{
-      margin-top:14px;
-      display:grid;
-      gap:8px;
-    }
-    .kb-row{
-      display:flex;
-      justify-content:center;
-      gap:6px;
-      flex-wrap:nowrap;
-    }
-    .key{
-      padding:12px 10px;
-      min-width:34px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.25);
-      background: rgba(2,6,23,0.22);
-      color: var(--text);
-      font-weight:900;
-      cursor:pointer;
-      user-select:none;
-    }
-    .key.wide{
-      min-width:72px;
-      font-size:12px;
-    }
-    .key:active{ transform: scale(0.97); }
-    .key:disabled{ opacity:0.55; cursor:not-allowed; }
 
     .shake{ animation: shake .25s linear; }
     @keyframes shake{
@@ -331,7 +318,9 @@
   </style>
 </head>
 <body>
+  <!-- Floating kites (subtle) -->
   <div class="kitefield" aria-hidden="true">
+    <!-- positions, sizes, and durations tuned for gentle motion -->
     <div class="kite c1" style="--dur:46s; left:-10vw; top:70vh; width:22px; height:22px; opacity:.42;"></div>
     <div class="kite c2" style="--dur:52s; left:-18vw; top:90vh; width:26px; height:26px; opacity:.48;"></div>
     <div class="kite c3" style="--dur:58s; left:-26vw; top:110vh; width:18px; height:18px; opacity:.40;"></div>
@@ -347,7 +336,7 @@
     <div class="card" id="gameCard" role="application" aria-label="Uttaryan Wordle">
       <div class="topline">
         <div class="pill" id="roundPill">Round 1 / 3</div>
-        <div class="small" id="subtitle">Tap card to type • or use keyboard below</div>
+        <div class="small" id="subtitle">Tap card to type on mobile • Use keyboard on desktop</div>
       </div>
 
       <main id="grid" aria-label="Game grid"></main>
@@ -362,17 +351,12 @@
         </div>
       </div>
 
-      <!-- On-screen keyboard -->
-      <div class="keyboard" aria-label="Keyboard">
-        <div class="kb-row" id="kb1"></div>
-        <div class="kb-row" id="kb2"></div>
-        <div class="kb-row" id="kb3"></div>
-      </div>
-
+      <!-- hidden input so phone keyboard can be used -->
       <input id="ghostInput" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />
     </div>
   </div>
 
+  <!-- Progress + recap modal -->
   <div class="overlay" id="overlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Progress">
       <div id="modalContent"></div>
@@ -384,9 +368,18 @@
 (() => {
   // Rounds
   const ROUNDS = [
-    { answer: "JHOLI", definition: "Jholi - Refers to the cloth bag that sadhus used to carry in old times to ask for donations." },
-    { answer: "PRAYAGRAJ", definition: "Prayagraj – One of the oldest citiies in India, where three holy rivers of India meet – Ganga, Yamuna, nad Saraswati" },
-    { answer: "DAN", definition: "Dan – Donation" }
+    {
+      answer: "JHOLI",
+      definition: "Jholi - Refers to the cloth bag that sadhus used to carry in old times to ask for donations."
+    },
+    {
+      answer: "PRAYAGRAJ",
+      definition: "Prayagraj – One of the oldest citiies in India, where three holy rivers of India meet – Ganga, Yamuna, nad Saraswati"
+    },
+    {
+      answer: "DAN",
+      definition: "Dan – Donation"
+    }
   ];
 
   const MAX_ROWS = 6;
@@ -412,11 +405,6 @@
   const overlay = document.getElementById("overlay");
   const modalContent = document.getElementById("modalContent");
   const modalButtons = document.getElementById("modalButtons");
-
-  // On-screen keyboard containers
-  const kb1 = document.getElementById("kb1");
-  const kb2 = document.getElementById("kb2");
-  const kb3 = document.getElementById("kb3");
 
   function clearEl(el){ while(el.firstChild) el.removeChild(el.firstChild); }
 
@@ -510,11 +498,10 @@
     guesses = Array.from({length: MAX_ROWS}, () => Array(WORD_LEN).fill(""));
 
     roundPill.textContent = `Round ${i+1} / ${ROUNDS.length}`;
-    subtitle.textContent = `${WORD_LEN} letters • Hints: ${hintsAllowedThisRound()}`;
+    subtitle.textContent = `${WORD_LEN} letters • Hints: ${hintsAllowedThisRound()} • Tap card to type on mobile`;
 
     buildGrid();
     render();
-    buildKeyboard();
 
     col = firstEditableCol(0);
     setMessage(`Type a <strong>${WORD_LEN}-letter</strong> guess, then press <strong>Enter</strong>.`);
@@ -527,9 +514,11 @@
     const a = answer.split("");
     const g = guess.split("");
 
+    // correct
     for (let i=0;i<WORD_LEN;i++){
       if (g[i] === a[i]) { res[i]="correct"; a[i]=null; g[i]=null; }
     }
+    // present
     for (let i=0;i<WORD_LEN;i++){
       if (!g[i]) continue;
       const idx = a.indexOf(g[i]);
@@ -800,33 +789,33 @@
     col = firstEditableCol(c + 1);
   }
 
-  // Unified handler for physical + on-screen keyboard
-  function handleKey(k){
-    if (overlay.style.display === "flex") return;
-    if (done) return;
-
-    if (k === "Enter") return lockInGuess();
-    if (k === "⌫") return handleBackspace();
-    if (/^[A-Z]$/.test(k)) return handleLetter(k);
-  }
-
   function focusInput(){
+    // For mobile: focusing the hidden input enables the soft keyboard when user taps card.
     try { ghostInput.focus({preventScroll:true}); } catch { ghostInput.focus(); }
   }
 
-  // Desktop keyboard
+  // Keyboard (desktop)
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && overlay.style.display === "flex") { closeModal(); return; }
     if (overlay.style.display === "flex") return;
+    if (done) return;
 
-    if (e.key === "Enter") { e.preventDefault(); return handleKey("Enter"); }
-    if (e.key === "Backspace") { e.preventDefault(); return handleKey("⌫"); }
+    if (e.key === "Enter") return lockInGuess();
+    if (e.key === "Backspace") return handleBackspace();
 
     const up = e.key.toUpperCase();
-    if (/^[A-Z]$/.test(up)) return handleKey(up);
+    if (/^[A-Z]$/.test(up)) handleLetter(up);
   });
 
-  // Mobile typing via hidden input
+  // Mobile typing support via hidden input (captures letters typed)
+  ghostInput.addEventListener("keydown", (e) => {
+    if (overlay.style.display === "flex") return;
+    if (done) return;
+
+    if (e.key === "Enter") { e.preventDefault(); lockInGuess(); }
+    if (e.key === "Backspace") { /* handled by input event too */ }
+  });
+
   ghostInput.addEventListener("input", () => {
     if (overlay.style.display === "flex") { ghostInput.value = ""; return; }
     if (done) { ghostInput.value = ""; return; }
@@ -834,38 +823,18 @@
     const v = ghostInput.value.toUpperCase().replace(/[^A-Z]/g, "");
     if (!v) { ghostInput.value = ""; return; }
 
-    for (const ch of v) handleKey(ch);
+    // type each character
+    for (const ch of v) handleLetter(ch);
     ghostInput.value = "";
   });
 
   // Tap the card to bring up mobile keyboard
-  gameCard.addEventListener("pointerdown", () => focusInput());
-
-  // On-screen keyboard build
-  const KB_LAYOUT = ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];
-  function addKey(el, label, wide=false){
-    const b = document.createElement("button");
-    b.className = "key" + (wide ? " wide" : "");
-    b.type = "button";
-    b.textContent = label;
-    b.addEventListener("click", () => {
-      focusInput();
-      handleKey(label);
-    });
-    el.appendChild(b);
-  }
-
-  function buildKeyboard(){
-    kb1.innerHTML = ""; kb2.innerHTML = ""; kb3.innerHTML = "";
-    for (const c of KB_LAYOUT[0]) addKey(kb1, c);
-    for (const c of KB_LAYOUT[1]) addKey(kb2, c);
-    addKey(kb3, "Enter", true);
-    for (const c of KB_LAYOUT[2]) addKey(kb3, c);
-    addKey(kb3, "⌫", true);
-  }
+  gameCard.addEventListener("pointerdown", () => {
+    focusInput();
+  });
 
   // Buttons
-  hintBtn.addEventListener("click", () => { focusInput(); revealHint(); });
+  hintBtn.addEventListener("click", revealHint);
 
   copyBtn.addEventListener("click", async () => {
     try {
