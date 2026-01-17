@@ -247,14 +247,14 @@
     <div class="status">
       <div class="msg" id="message">Type your guess, then press <strong>Enter</strong>.</div>
       <div class="actions">
-        <button class="hintBtn" id="hintBtn" title="Reveal 1 correct-position letter (locked)">HINT</button>
+        <button class="hintBtn" id="hintBtn" title="Reveal a correct-position letter (locked)">HINT</button>
         <button id="copyBtn" title="Copy share result for this round">COPY ROUND</button>
         <button id="copyAllBtn" title="Copy all rounds (when finished)">COPY ALL</button>
         <button id="resetBtn" title="Restart current word">RESET</button>
       </div>
     </div>
 
-    <div class="hint" id="hintLine">Hints: 1 per round. Any word is accepted (letters only).</div>
+    <div class="hint" id="hintLine">Hints vary by round.</div>
   </div>
 
   <div class="overlay" id="overlay" aria-hidden="true">
@@ -266,9 +266,6 @@
 
 <script>
 (() => {
-  // ---------------------------
-  // Your 3 rounds (in order)
-  // ---------------------------
   const ROUNDS = [
     {
       answer: "JHOLI",
@@ -284,22 +281,16 @@
     }
   ];
 
-  // ---------------------------
-  // Settings
-  // ---------------------------
   const MAX_ROWS = 6;
-  const HINTS_PER_ROUND = 1; // change to 2 or 3 if you want more hints
 
-  // ---------------------------
-  // Free-play validation: allow any letters-only word
-  // ---------------------------
+  // Hints per round: JHOLI=1, PRAYAGRAJ=5, DAN=1
+  const HINTS_BY_ROUND = [1, 5, 1];
+
+  // Allow ANY letters-only guess
   function isValidWord(w) {
     return /^[A-Z]+$/.test(w);
   }
 
-  // ---------------------------
-  // UI hooks
-  // ---------------------------
   const gridEl = document.getElementById("grid");
   const msgEl = document.getElementById("message");
   const hintBtn = document.getElementById("hintBtn");
@@ -314,7 +305,6 @@
   const modalContent = document.getElementById("modalContent");
   const modalButtons = document.getElementById("modalButtons");
 
-  // Keyboard layout
   const layout = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
   const keyEls = new Map();
   const r1 = document.getElementById("row1");
@@ -342,9 +332,6 @@
     addKey(r3, "⌫", true);
   }
 
-  // ---------------------------
-  // Game state
-  // ---------------------------
   let roundIndex = 0;
   let ANSWER = "";
   let WORD_LEN = 0;
@@ -354,13 +341,16 @@
   let guesses = [];
   let done = false;
 
-  // Hint state: fixedPositions locks correct letters in correct places
   let hintsUsed = 0;
   let fixedPositions = new Map(); // pos -> letter
 
   const roundResults = ROUNDS.map(() => ({
     finished:false, won:false, attempts:0, emoji:"", answer:"", definition:""
   }));
+
+  function hintsAllowedThisRound() {
+    return HINTS_BY_ROUND[roundIndex] ?? 1;
+  }
 
   function setMessage(html) { msgEl.innerHTML = html; }
 
@@ -397,19 +387,11 @@
     }
   }
 
-  function applyFixedToRow(r) {
-    for (const [pos, letter] of fixedPositions.entries()) {
-      guesses[r][pos] = letter;
-      // add visual hint outline (even before scoring)
-      tiles[r][pos].classList.add("hinted");
-    }
-  }
-
   function firstEditableCol(start=0) {
     for (let c = start; c < WORD_LEN; c++) {
       if (!fixedPositions.has(c)) return c;
     }
-    return WORD_LEN; // none
+    return WORD_LEN;
   }
 
   function lastEditableCol(start) {
@@ -417,6 +399,14 @@
       if (!fixedPositions.has(c)) return c;
     }
     return -1;
+  }
+
+  function render() {
+    for (let r=0; r<MAX_ROWS; r++){
+      for (let c=0; c<WORD_LEN; c++){
+        tiles[r][c].textContent = guesses[r][c];
+      }
+    }
   }
 
   function initStateForRound(i) {
@@ -435,24 +425,15 @@
 
     roundPill.textContent = `Round ${i+1} / ${ROUNDS.length}`;
     subtitle.textContent = `${WORD_LEN} letters · ${MAX_ROWS} tries`;
-    hintLine.textContent = `Hints: ${HINTS_PER_ROUND} per round. Any word is accepted (letters only).`;
+    hintLine.textContent = `Hints this round: ${hintsAllowedThisRound()} (reveals a correct-position letter and locks it).`;
 
     buildGrid();
     buildKeyboard();
     render();
 
-    // set cursor to first editable spot
     col = firstEditableCol(0);
     setMessage(`Type a <strong>${WORD_LEN}-letter</strong> guess, then press <strong>Enter</strong>.`);
     updateHintButton();
-  }
-
-  function render() {
-    for (let r=0; r<MAX_ROWS; r++){
-      for (let c=0; c<WORD_LEN; c++){
-        tiles[r][c].textContent = guesses[r][c];
-      }
-    }
   }
 
   function scoreGuess(guess, answer) {
@@ -460,11 +441,9 @@
     const a = answer.split("");
     const g = guess.split("");
 
-    // correct
     for (let i=0;i<WORD_LEN;i++){
       if (g[i] === a[i]) { res[i]="correct"; a[i]=null; g[i]=null; }
     }
-    // present
     for (let i=0;i<WORD_LEN;i++){
       if (!g[i]) continue;
       const idx = a.indexOf(g[i]);
@@ -506,9 +485,6 @@
     return out.join("\n");
   }
 
-  // ---------------------------
-  // Modal helpers
-  // ---------------------------
   function openModal(html, buttons) {
     modalContent.innerHTML = html;
     clearEl(modalButtons);
@@ -663,11 +639,8 @@
     ]);
   }
 
-  // ---------------------------
-  // Hints
-  // ---------------------------
   function updateHintButton() {
-    const remaining = Math.max(0, HINTS_PER_ROUND - hintsUsed);
+    const remaining = Math.max(0, hintsAllowedThisRound() - hintsUsed);
     hintBtn.textContent = `HINT (${remaining})`;
     hintBtn.disabled = done || remaining <= 0 || fixedPositions.size >= WORD_LEN;
     hintBtn.style.opacity = hintBtn.disabled ? "0.6" : "1";
@@ -675,9 +648,8 @@
 
   function revealHint() {
     if (done) return;
-    if (hintsUsed >= HINTS_PER_ROUND) return;
+    if (hintsUsed >= hintsAllowedThisRound()) return;
 
-    // choose a random position not already fixed
     const candidates = [];
     for (let i=0;i<WORD_LEN;i++){
       if (!fixedPositions.has(i)) candidates.push(i);
@@ -689,44 +661,28 @@
     fixedPositions.set(pos, letter);
     hintsUsed++;
 
-    // Apply to all rows' data so the letter is forced in every attempt
     for (let r=0; r<MAX_ROWS; r++) {
       guesses[r][pos] = letter;
     }
-
-    // Update visuals and re-render
     for (let r=0; r<MAX_ROWS; r++) {
       tiles[r][pos].classList.add("hinted");
     }
-    render();
 
-    // Move cursor to first editable slot (current row)
+    render();
     col = firstEditableCol(0);
     setMessage(`💡 Hint revealed: position <strong>${pos+1}</strong> is <strong>${letter}</strong> (locked).`);
     updateHintButton();
   }
 
-  // ---------------------------
-  // Core gameplay
-  // ---------------------------
   function lockInGuess() {
-    // Ensure fixed letters are present (they are), and check completeness
     const guess = guesses[row].join("");
 
-    if (guess.length !== WORD_LEN) {
-      setMessage(`Need <strong>${WORD_LEN}</strong> letters.`);
-      shakeRow(row);
-      return;
-    }
-
-    // Must be fully filled (no blanks)
     if (guesses[row].some(ch => ch === "")) {
       setMessage(`Fill all <strong>${WORD_LEN}</strong> letters.`);
       shakeRow(row);
       return;
     }
 
-    // Letters only
     if (!isValidWord(guess)) {
       setMessage("Letters only (A–Z).");
       shakeRow(row);
@@ -758,10 +714,6 @@
       return;
     }
 
-    // Prefill fixed letters into the new row visuals (already in guesses), mark hinted style
-    applyFixedToRow(row);
-    render();
-
     setMessage("Keep going.");
   }
 
@@ -771,11 +723,8 @@
     if (k === "Enter") { lockInGuess(); return; }
 
     if (k === "⌫" || k === "Backspace") {
-      // Move back to previous editable position
       let prev = lastEditableCol(col - 1);
       if (prev === -1) return;
-
-      // If current col is beyond range, also handle
       col = prev;
       guesses[row][col] = "";
       render();
@@ -783,7 +732,6 @@
     }
 
     if (/^[A-Z]$/.test(k)) {
-      // find next editable slot at/after current col
       let c = col;
       while (c < WORD_LEN && fixedPositions.has(c)) c++;
       if (c >= WORD_LEN) return;
@@ -792,13 +740,10 @@
       popTile(row, c);
       render();
 
-      // advance col to next editable slot after c
-      let next = firstEditableCol(c + 1);
-      col = next;
+      col = firstEditableCol(c + 1);
     }
   }
 
-  // Physical keyboard
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && overlay.style.display === "flex") {
       closeModal();
@@ -813,10 +758,7 @@
     if (/^[A-Z]$/.test(up)) handleKey(up);
   });
 
-  // Buttons
-  hintBtn.addEventListener("click", () => {
-    revealHint();
-  });
+  hintBtn.addEventListener("click", () => revealHint());
 
   copyBtn.addEventListener("click", async () => {
     try {
@@ -840,7 +782,6 @@
 
   resetBtn.addEventListener("click", () => initStateForRound(roundIndex));
 
-  // Start
   buildKeyboard();
   initStateForRound(0);
 })();
