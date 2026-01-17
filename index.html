@@ -13,6 +13,7 @@
       --tile:#1f2937;
       --border: rgba(148,163,184,0.22);
       --border2: rgba(148,163,184,0.18);
+      --hint: rgba(56,189,248,0.85);
     }
     *{box-sizing:border-box}
     body{
@@ -75,12 +76,16 @@
       font-weight:800;
       text-transform:uppercase;
       user-select:none;
-      transition: transform .08s ease, background .18s ease, border-color .18s ease;
+      transition: transform .08s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
     }
     .tile.pop{ transform: scale(1.04); }
     .tile.correct{ background:#16a34a; border-color:#22c55e; color:white; }
     .tile.present{ background:#ca8a04; border-color:#eab308; color:white; }
     .tile.absent{ background:#334155; border-color:#475569; color:#e2e8f0; }
+    .tile.hinted{
+      border-color: var(--hint);
+      box-shadow: 0 0 0 2px rgba(56,189,248,0.18) inset;
+    }
 
     .keyboard{ margin-top:14px; display:grid; gap:8px; }
     .kb-row{display:flex; gap:8px; justify-content:center; flex-wrap:nowrap;}
@@ -126,7 +131,12 @@
       cursor:pointer;
       font-weight:800;
       font-size:12px;
+      white-space:nowrap;
     }
+    .actions button.hintBtn{
+      border-color: rgba(56,189,248,0.45);
+    }
+
     .hint{font-size:12px; color:var(--muted); margin-top:10px; text-align:center;}
     .shake{ animation: shake .25s linear; }
     @keyframes shake{
@@ -135,6 +145,7 @@
       75%{ transform: translateX(6px); }
     }
 
+    /* Overlay (progress + recap) */
     .overlay{
       position:fixed;
       inset:0;
@@ -234,15 +245,16 @@
     </div>
 
     <div class="status">
-      <div class="msg" id="message">Loading dictionary…</div>
+      <div class="msg" id="message">Type your guess, then press <strong>Enter</strong>.</div>
       <div class="actions">
+        <button class="hintBtn" id="hintBtn" title="Reveal 1 correct-position letter (locked)">HINT</button>
         <button id="copyBtn" title="Copy share result for this round">COPY ROUND</button>
         <button id="copyAllBtn" title="Copy all rounds (when finished)">COPY ALL</button>
         <button id="resetBtn" title="Restart current word">RESET</button>
       </div>
     </div>
 
-    <div class="hint" id="hint">5-letter validation loads from <strong>allowed5.txt</strong> (repo root). 3- and 9-letter use built-ins.</div>
+    <div class="hint" id="hintLine">Hints: 1 per round. Any word is accepted (letters only).</div>
   </div>
 
   <div class="overlay" id="overlay" aria-hidden="true">
@@ -255,7 +267,7 @@
 <script>
 (() => {
   // ---------------------------
-  // 1) Your 3-level Wordle
+  // Your 3 rounds (in order)
   // ---------------------------
   const ROUNDS = [
     {
@@ -273,87 +285,25 @@
   ];
 
   // ---------------------------
-  // 2) Built-in validation sets for 3 and 9 letters
+  // Settings
   // ---------------------------
-  const WORDS_3 = `
-AND THE YOU ARE FOR NOT BUT ALL ANY CAN HAD HER HIM HIS HOW MAN MEN NEW NOW OLD ONE OUR OUT SEE SHE TWO WAY WHO WHY YES
-DAY MAY SUN SEA SKY RUN FUN EAT TRY USE DUE FAR BAR JAR BAG MAP TAP TOP PAN PEN PIN DON DID LIT SIT SET GET GOT BAT BIT BET
-BOT CAT COT CUT PUT PAT PIT POT RAT RAN RED RAW ROW LOW LAW LAB JOB JOY WAR WIN WON GOD HOP HIP HIT HUT HAT HOT HEN EGG ICE
-OIL AIR INK ARM LEG EYE EAR DAN
-`;
-
-  const WORDS_9 = `
-ADVENTURE AFTERNOON ATTENTION AVAILABLE CELEBRATE CHOCOLATE COMMUNITY COMPUTERS CREATIVITY DIFFERENT EDUCATION EVERYBODY
-FANTASTIC FORMATION FREQUENCY GOVERNMENT HAPPINESS IMPORTANT LANGUAGES LITERATURE MOUNTAINS NOTEBOOKS OPERATIONS ORGANIZED
-PINEAPPLE PRACTICAL PRAYAGRAJ PRESIDENT RELIGIOUS SATELLITE SOMETHING SPIRITUAL STRATEGY TECHNOLOGY TRADITION TRANSPORT
-WATERFALL WONDERFUL
-`;
-
-  function makeSet(multiline) {
-    return new Set(
-      multiline.split(/\s+/).map(s => s.trim().toUpperCase()).filter(s => s && /^[A-Z]+$/.test(s))
-    );
-  }
-
-  const SET3 = makeSet(WORDS_3);
-  const SET9 = makeSet(WORDS_9);
-
-  // Always allow the 3 answers
-  SET9.add("PRAYAGRAJ");
-  SET3.add("DAN");
+  const MAX_ROWS = 6;
+  const HINTS_PER_ROUND = 1; // change to 2 or 3 if you want more hints
 
   // ---------------------------
-  // 3) 5-letter validation loads from allowed5.txt
+  // Free-play validation: allow any letters-only word
   // ---------------------------
-  const hintEl = document.getElementById("hint");
-  let SET5 = new Set();              // loaded from allowed5.txt
-  let SET5_FALLBACK = new Set([      // minimal fallback so app works even if file missing
-    "ABOUT","OTHER","WHICH","THERE","THEIR","CRANE","STONE","PLANE","SMILE","BRING","SHARE","SOUND",
-    "LIGHT","WATER","HOUSE","MONEY","TRAIN","GRASS","CLOUD","HEART","NIGHT","WORLD","CLEAN","BRAVE",
-    "FRUIT","RIVER","PLANT","EARTH","FAITH","PEACE","POWER","UNITY","VOICE","BEGIN","FINAL","HAPPY",
-    "TRUST","VALUE","SAUCE","SUGAR","SPICE"
-  ]);
-
-  async function loadAllowed5() {
-    // cache-bust so GitHub Pages updates quickly after commits
-    const url = `./allowed5.txt?v=${Date.now()}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Could not load allowed5.txt (HTTP ${res.status})`);
-    const text = await res.text();
-
-    const words = text
-      .split(/\r?\n/)
-      .map(s => s.trim().toUpperCase())
-      .filter(s => s && /^[A-Z]{5}$/.test(s)); // strict 5-letter alpha
-
-    if (words.length < 100) {
-      // You can lower this, but it helps catch “empty file” mistakes
-      throw new Error("allowed5.txt loaded but contains too few valid 5-letter words.");
-    }
-
-    SET5 = new Set(words);
-    SET5.add("JHOLI"); // always allow your answer
-    return words.length;
-  }
-
   function isValidWord(w) {
-    const L = w.length;
-    if (L === 3) return SET3.has(w);
-    if (L === 9) return SET9.has(w);
-
-    if (L === 5) {
-      // Prefer loaded NYT-style list; fallback if not loaded
-      if (SET5 && SET5.size > 0) return SET5.has(w);
-      return SET5_FALLBACK.has(w) || w === "JHOLI";
-    }
-    return false;
+    return /^[A-Z]+$/.test(w);
   }
 
   // ---------------------------
-  // 4) Game UI + logic
+  // UI hooks
   // ---------------------------
   const gridEl = document.getElementById("grid");
   const msgEl = document.getElementById("message");
+  const hintBtn = document.getElementById("hintBtn");
+  const hintLine = document.getElementById("hintLine");
   const copyBtn = document.getElementById("copyBtn");
   const copyAllBtn = document.getElementById("copyAllBtn");
   const resetBtn = document.getElementById("resetBtn");
@@ -364,13 +314,12 @@ WATERFALL WONDERFUL
   const modalContent = document.getElementById("modalContent");
   const modalButtons = document.getElementById("modalButtons");
 
+  // Keyboard layout
   const layout = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
   const keyEls = new Map();
   const r1 = document.getElementById("row1");
   const r2 = document.getElementById("row2");
   const r3 = document.getElementById("row3");
-
-  const MAX_ROWS = 6;
 
   function clearEl(el){ while(el.firstChild) el.removeChild(el.firstChild); }
 
@@ -393,6 +342,9 @@ WATERFALL WONDERFUL
     addKey(r3, "⌫", true);
   }
 
+  // ---------------------------
+  // Game state
+  // ---------------------------
   let roundIndex = 0;
   let ANSWER = "";
   let WORD_LEN = 0;
@@ -401,6 +353,10 @@ WATERFALL WONDERFUL
   let row = 0, col = 0;
   let guesses = [];
   let done = false;
+
+  // Hint state: fixedPositions locks correct letters in correct places
+  let hintsUsed = 0;
+  let fixedPositions = new Map(); // pos -> letter
 
   const roundResults = ROUNDS.map(() => ({
     finished:false, won:false, attempts:0, emoji:"", answer:"", definition:""
@@ -441,20 +397,54 @@ WATERFALL WONDERFUL
     }
   }
 
+  function applyFixedToRow(r) {
+    for (const [pos, letter] of fixedPositions.entries()) {
+      guesses[r][pos] = letter;
+      // add visual hint outline (even before scoring)
+      tiles[r][pos].classList.add("hinted");
+    }
+  }
+
+  function firstEditableCol(start=0) {
+    for (let c = start; c < WORD_LEN; c++) {
+      if (!fixedPositions.has(c)) return c;
+    }
+    return WORD_LEN; // none
+  }
+
+  function lastEditableCol(start) {
+    for (let c = start; c >= 0; c--) {
+      if (!fixedPositions.has(c)) return c;
+    }
+    return -1;
+  }
+
   function initStateForRound(i) {
     roundIndex = i;
     ANSWER = ROUNDS[i].answer.toUpperCase().replace(/[^A-Z]/g, "");
     WORD_LEN = ANSWER.length;
 
-    row = 0; col = 0; done = false;
+    row = 0;
+    col = 0;
+    done = false;
+
+    hintsUsed = 0;
+    fixedPositions = new Map();
+
     guesses = Array.from({length: MAX_ROWS}, () => Array(WORD_LEN).fill(""));
 
     roundPill.textContent = `Round ${i+1} / ${ROUNDS.length}`;
     subtitle.textContent = `${WORD_LEN} letters · ${MAX_ROWS} tries`;
+    hintLine.textContent = `Hints: ${HINTS_PER_ROUND} per round. Any word is accepted (letters only).`;
+
     buildGrid();
     buildKeyboard();
     render();
+
+    // set cursor to first editable spot
+    col = firstEditableCol(0);
     setMessage(`Type a <strong>${WORD_LEN}-letter</strong> guess, then press <strong>Enter</strong>.`);
+    updateHintButton();
   }
 
   function render() {
@@ -470,9 +460,11 @@ WATERFALL WONDERFUL
     const a = answer.split("");
     const g = guess.split("");
 
+    // correct
     for (let i=0;i<WORD_LEN;i++){
       if (g[i] === a[i]) { res[i]="correct"; a[i]=null; g[i]=null; }
     }
+    // present
     for (let i=0;i<WORD_LEN;i++){
       if (!g[i]) continue;
       const idx = a.indexOf(g[i]);
@@ -514,6 +506,9 @@ WATERFALL WONDERFUL
     return out.join("\n");
   }
 
+  // ---------------------------
+  // Modal helpers
+  // ---------------------------
   function openModal(html, buttons) {
     modalContent.innerHTML = html;
     clearEl(modalButtons);
@@ -668,15 +663,72 @@ WATERFALL WONDERFUL
     ]);
   }
 
+  // ---------------------------
+  // Hints
+  // ---------------------------
+  function updateHintButton() {
+    const remaining = Math.max(0, HINTS_PER_ROUND - hintsUsed);
+    hintBtn.textContent = `HINT (${remaining})`;
+    hintBtn.disabled = done || remaining <= 0 || fixedPositions.size >= WORD_LEN;
+    hintBtn.style.opacity = hintBtn.disabled ? "0.6" : "1";
+  }
+
+  function revealHint() {
+    if (done) return;
+    if (hintsUsed >= HINTS_PER_ROUND) return;
+
+    // choose a random position not already fixed
+    const candidates = [];
+    for (let i=0;i<WORD_LEN;i++){
+      if (!fixedPositions.has(i)) candidates.push(i);
+    }
+    if (candidates.length === 0) return;
+
+    const pos = candidates[Math.floor(Math.random() * candidates.length)];
+    const letter = ANSWER[pos];
+    fixedPositions.set(pos, letter);
+    hintsUsed++;
+
+    // Apply to all rows' data so the letter is forced in every attempt
+    for (let r=0; r<MAX_ROWS; r++) {
+      guesses[r][pos] = letter;
+    }
+
+    // Update visuals and re-render
+    for (let r=0; r<MAX_ROWS; r++) {
+      tiles[r][pos].classList.add("hinted");
+    }
+    render();
+
+    // Move cursor to first editable slot (current row)
+    col = firstEditableCol(0);
+    setMessage(`💡 Hint revealed: position <strong>${pos+1}</strong> is <strong>${letter}</strong> (locked).`);
+    updateHintButton();
+  }
+
+  // ---------------------------
+  // Core gameplay
+  // ---------------------------
   function lockInGuess() {
+    // Ensure fixed letters are present (they are), and check completeness
     const guess = guesses[row].join("");
+
     if (guess.length !== WORD_LEN) {
       setMessage(`Need <strong>${WORD_LEN}</strong> letters.`);
       shakeRow(row);
       return;
     }
+
+    // Must be fully filled (no blanks)
+    if (guesses[row].some(ch => ch === "")) {
+      setMessage(`Fill all <strong>${WORD_LEN}</strong> letters.`);
+      shakeRow(row);
+      return;
+    }
+
+    // Letters only
     if (!isValidWord(guess)) {
-      setMessage("Not in word list.");
+      setMessage("Letters only (A–Z).");
       shakeRow(row);
       return;
     }
@@ -690,19 +742,25 @@ WATERFALL WONDERFUL
     if (guess === ANSWER) {
       done = true;
       setMessage("✅ Correct! (See progress screen)");
+      updateHintButton();
       showProgressModal({won:true});
       return;
     }
 
     row++;
-    col = 0;
+    col = firstEditableCol(0);
 
     if (row >= MAX_ROWS) {
       done = true;
       setMessage(`❌ Out of tries. (See progress screen)`);
+      updateHintButton();
       showProgressModal({won:false});
       return;
     }
+
+    // Prefill fixed letters into the new row visuals (already in guesses), mark hinted style
+    applyFixedToRow(row);
+    render();
 
     setMessage("Keep going.");
   }
@@ -711,24 +769,36 @@ WATERFALL WONDERFUL
     if (done) return;
 
     if (k === "Enter") { lockInGuess(); return; }
+
     if (k === "⌫" || k === "Backspace") {
-      if (col > 0) {
-        col--;
-        guesses[row][col] = "";
-        render();
-      }
+      // Move back to previous editable position
+      let prev = lastEditableCol(col - 1);
+      if (prev === -1) return;
+
+      // If current col is beyond range, also handle
+      col = prev;
+      guesses[row][col] = "";
+      render();
       return;
     }
+
     if (/^[A-Z]$/.test(k)) {
-      if (col < WORD_LEN) {
-        guesses[row][col] = k;
-        popTile(row,col);
-        col++;
-        render();
-      }
+      // find next editable slot at/after current col
+      let c = col;
+      while (c < WORD_LEN && fixedPositions.has(c)) c++;
+      if (c >= WORD_LEN) return;
+
+      guesses[row][c] = k;
+      popTile(row, c);
+      render();
+
+      // advance col to next editable slot after c
+      let next = firstEditableCol(c + 1);
+      col = next;
     }
   }
 
+  // Physical keyboard
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && overlay.style.display === "flex") {
       closeModal();
@@ -741,6 +811,11 @@ WATERFALL WONDERFUL
     if (e.key === "Backspace") return handleKey("Backspace");
     const up = e.key.toUpperCase();
     if (/^[A-Z]$/.test(up)) handleKey(up);
+  });
+
+  // Buttons
+  hintBtn.addEventListener("click", () => {
+    revealHint();
   });
 
   copyBtn.addEventListener("click", async () => {
@@ -765,21 +840,9 @@ WATERFALL WONDERFUL
 
   resetBtn.addEventListener("click", () => initStateForRound(roundIndex));
 
-  // ---------------------------
-  // Boot: load allowed5.txt, then start
-  // ---------------------------
-  (async () => {
-    buildKeyboard();
-    try {
-      const n = await loadAllowed5();
-      hintEl.innerHTML = `5-letter validation: loaded <strong>${n.toLocaleString()}</strong> words from <strong>allowed5.txt</strong>.`;
-      initStateForRound(0);
-    } catch (err) {
-      console.warn(err);
-      hintEl.innerHTML = `Could not load <strong>allowed5.txt</strong>. Using built-in fallback list for 5-letter validation. (Tip: add allowed5.txt in repo root.)`;
-      initStateForRound(0);
-    }
-  })();
+  // Start
+  buildKeyboard();
+  initStateForRound(0);
 })();
 </script>
 </body>
